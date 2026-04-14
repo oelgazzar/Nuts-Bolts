@@ -18,19 +18,12 @@ public partial class Bolt : MonoBehaviour, IPointerClickHandler
     [SerializeField] ParticleSystem[] _completionEffects;
 
     public static event Action<Bolt> OnBoltClicked;
-    public static event Action<Nut> OnNutInserted;
+    public static event Action<Nut, int, bool> OnNutInserted;
     public static event Action OnBoltCompleted;
 
     readonly Stack<Nut> _nuts = new();
 
     public Nut TopNut => _nuts.Count > 0 ? _nuts.Peek() : null;
-
-    AudioSource _audioSource;
-
-    private void Awake()
-    {
-        _audioSource = GetComponent<AudioSource>();
-    }
 
     private void Start()
     {
@@ -53,83 +46,59 @@ public partial class Bolt : MonoBehaviour, IPointerClickHandler
         _nuts.Push(nut);
     }
 
-    public void OnPointerClick(PointerEventData eventData)
+    public Nut Peek()
     {
-        OnBoltClicked?.Invoke(this);
+        if (_nuts.Count == 0) return null;
+        return _nuts.Peek();
     }
 
-    public void BeginTransfer()
+    public Nut Pop()
     {
-        var nut = _nuts.Peek();
-        var seq = DOTween.Sequence();
-        seq.Append(nut.transform.DOMove(_abovePoint.position, .3f)
-            .SetEase(Ease.InOutSine));
-        seq.Join(nut.transform.DORotate(new Vector3(0, 180, 0), .2f)
-            .SetEase(Ease.InOutSine));
-        seq.OnStart(() =>
-        {
-            _audioSource.PlayOneShot(_nutSpinSfx);
-        });
-        AnimationQueue.Instance.Enqueue(seq);
+        var nut = _nuts.Pop();
+        NutAnimationController.Instance.PlayExitAnimation(nut, this);
+        return nut;
     }
 
-    public void CancelTransfer()
+    public void Push(Nut transferredNut)
     {
-        var nut = _nuts.Peek();
-        var seq = DOTween.Sequence();
-        var seq1 = DOTween.Sequence();
-        var seq2 = DOTween.Sequence();
-        seq1.Append(nut.transform.DOMove(_insertionPoints[_nuts.Count - 1].position, .3f)
-            .SetEase(Ease.InOutSine));
-        seq2.AppendInterval(.1f);
-        seq2.Append(nut.transform.DORotate(new Vector3(0, 0, 0), .2f)
-            .SetEase(Ease.InOutSine));
-        seq.Append(seq1);
-        seq.Join(seq2);
-        seq.OnStart(() =>
-        {
-            _audioSource.PlayOneShot(_nutSpinSfx);
-        });
-        AnimationQueue.Instance.Enqueue(seq);
-    }
+        var nutsCount = _nuts.Count;
+        var isNutMatch = nutsCount > 0 && _nuts.Peek().IsSameColorAs(transferredNut);
 
+        _nuts.Push(transferredNut);
+        NutAnimationController.Instance.PlayEnterAnimation(transferredNut, this)
+            .OnComplete(() =>
+            {
+                Debug.Log($"nutsCount: {nutsCount}");
+                OnNutInserted?.Invoke(transferredNut, nutsCount, isNutMatch);
+                if (++nutsCount == _maxNuts)
+                    CheckComplete();
+            });
+    }
 
     public bool IsEmpty()
     {
         return _nuts.Count == 0;
     }
 
+    public bool IsComplete()
+    {
+        if (_nuts.Count < _maxNuts) return false;
+
+        var topNut = _nuts.Peek();
+        foreach (var nut in _nuts)
+        {
+            if (!nut.IsSameColorAs(topNut)) return false;
+        }
+
+        return true;
+    }
+
     public bool CanReceiveNut(Nut transferredNut)
     {
+        if (transferredNut == null) return false;
+
         var topNutColor = _nuts.Count > 0 ? _nuts.Peek().Color : (Color?)null;
         return _nuts.Count < _maxNuts && (topNutColor == null || topNutColor == transferredNut.Color);
-    }
-
-    public void CompleteTransfer()
-    {
-        _nuts.Pop();
-    }
-
-    public void ReceiveNut(Nut transferredNut)
-    {
-        _nuts.Push(transferredNut);
-        var seq = DOTween.Sequence();
-        seq.Append(transferredNut.transform.DOMove(_abovePoint.position, .3f)
-            .SetEase(Ease.InOutSine));
-        seq.AppendCallback(() =>
-        {
-            _audioSource.PlayOneShot(_nutSpinSfx);
-        });
-        var insertionIndex = _nuts.Count - 1;
-        seq.Append(transferredNut.transform.DOMove(_insertionPoints[insertionIndex].position, .3f)
-            .SetEase(Ease.InOutSine));
-        seq.Join(transferredNut.transform.DORotate(new Vector3(0, 0, 0), .3f).SetEase(Ease.InOutSine));
-        seq.onComplete = () =>
-        {
-            OnNutInserted?.Invoke(transferredNut);
-            CheckComplete();
-        };
-        AnimationQueue.Instance.Enqueue(seq);
     }
 
     private void CheckComplete()
@@ -146,18 +115,20 @@ public partial class Bolt : MonoBehaviour, IPointerClickHandler
         }
 
         OnBoltCompleted?.Invoke();
+    } 
+
+    public Vector3 GetTopSlotPosition()
+    {
+        return _abovePoint.position;
     }
 
-    public bool IsComplete()
+    public Vector3 GetInsertionPosition()
     {
-        if (_nuts.Count < _maxNuts) return false;
+        return _insertionPoints[_nuts.Count - 1].position;
+    }
 
-        var topNut = _nuts.Peek();
-        foreach (var nut in _nuts)
-        {
-            if (!nut.IsSameColorAs(topNut)) return false;
-        }
-
-        return true;
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        OnBoltClicked?.Invoke(this);
     }
 }

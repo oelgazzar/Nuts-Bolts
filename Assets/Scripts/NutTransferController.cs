@@ -1,4 +1,6 @@
+using DG.Tweening;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(AudioSource))]
@@ -10,56 +12,87 @@ public class NutTransferController : MonoBehaviour
 
     public static event Action OnLevelCompleted;
     public static event Action<string> OnHintToDisplay;
+    public static event Action<Nut> NutTransfered;
 
-    Bolt _from;
-    Bolt _to;
+    readonly Stack<TransferGroupCommand> _transferHistory = new();
+
+    Bolt _sourceBolt;
+    Bolt _targetBolt;
+    Nut _transferredNut;
 
     private void HandleBoltClicked(Bolt bolt)
     {
-        if (_from == null)
+        if (_sourceBolt == null)
         {
-            if (bolt.IsEmpty())
+            // Skip if bolt is empty
+            if (!bolt.IsEmpty())
             {
-                OnHintToDisplay?.Invoke("Selected bolt has no nuts to transfer.");
-                return;
-            } else
-            {
-                _from = bolt;
-                bolt.BeginTransfer();
+                _sourceBolt = bolt;
+                _transferredNut = bolt.Pop();
             }
         }
-        else if (_to == null)
+
+        else
         {
-            if (bolt == _from)
+            if (bolt == _sourceBolt)
             {
-                OnHintToDisplay?.Invoke("Cannot transfer to the same bolt.");
-                bolt.CancelTransfer();
-                _from = null;
+                // Return to same bolt and reset
+                bolt.Push(_transferredNut);
+                _sourceBolt = null;
+                _transferredNut = null;
                 return;
             }
-            _to = bolt;
-            TransferNut();
+
+            // Otherwise, try transfer
+            _targetBolt = bolt;
+            TryTransferNut();
         }
     }
 
-    private void TransferNut()
+    private void TryTransferNut()
     {
-        
-        var transferredNut = _from.TopNut;
-        if (_to.CanReceiveNut(transferredNut))
+        TransferGroupCommand transferGroup = new();
+
+        if (_targetBolt.CanReceiveNut(_transferredNut))
         {
-            _from.CompleteTransfer();
-            _to.ReceiveNut(transferredNut);
-        } else
+            var transferCommand = new TransferCommand(_sourceBolt, _targetBolt, _transferredNut);
+            transferGroup.AddTransfer(transferCommand);
+            transferCommand.Execute();
+
+            // Group Transfer
+            while (!_sourceBolt.IsEmpty() &&
+                _targetBolt.CanReceiveNut(_sourceBolt.Peek()))
+            {
+                _transferredNut = _sourceBolt.Pop();
+                transferCommand = new TransferCommand(_sourceBolt, _targetBolt, _transferredNut);
+                transferGroup.AddTransfer(transferCommand);
+                transferCommand.Execute();
+            }
+        }
+        else
         {
-            _from.CancelTransfer();
+            _sourceBolt.Push(_transferredNut);
         }
 
-        _from = null;
-        _to = null;
+        _transferHistory.Push(transferGroup);
+
+        _sourceBolt = null;
+        _targetBolt = null;
+        _transferredNut = null;
     }
 
-    void CheckLevelComplete(Nut _)
+    public void Undo()
+    {
+        if (_transferHistory.Count == 0) return;
+
+        Debug.Log("undoing..");
+
+
+        var lastTransferGroup = _transferHistory.Pop();
+        lastTransferGroup.Undo();
+    }
+
+    void CheckWin()
     {
         foreach (var bolt in _bolts)
         {
@@ -75,12 +108,84 @@ public class NutTransferController : MonoBehaviour
     private void OnEnable()
     {
         Bolt.OnBoltClicked += HandleBoltClicked;
-        Bolt.OnNutInserted += CheckLevelComplete;
+        Bolt.OnBoltCompleted += CheckWin;
     }
 
     private void OnDisable()
     {
         Bolt.OnBoltClicked -= HandleBoltClicked;
-        Bolt.OnNutInserted -= CheckLevelComplete;
+        Bolt.OnBoltCompleted -= CheckWin;
     }
+
+    private void OnGUI()
+    {
+        if (GUI.Button(new Rect(10, 10, 100, 20), "Undo")) {
+            Undo();
+        }
+    }
+}
+
+public class TransferCommand : ICommand
+{
+    readonly Bolt _sourceBolt;
+    readonly Bolt _targetBolt;
+    readonly Nut _transferredNut;
+
+    public TransferCommand(Bolt sourceBolt, Bolt targetBolt, Nut transferredNut)
+    {
+        _sourceBolt = sourceBolt;
+        _targetBolt = targetBolt;
+        _transferredNut = transferredNut;
+    }
+
+    public void Execute()
+    {
+        NutAnimationController.Instance.PlayTransferAnimation(_transferredNut, _targetBolt);
+        _targetBolt.Push(_transferredNut);
+    }
+
+    public void Undo()
+    {
+        _targetBolt.Pop();
+        NutAnimationController.Instance.PlayTransferAnimation(_transferredNut, _sourceBolt);
+        _sourceBolt.Push(_transferredNut);
+    }
+}
+
+public class TransferGroupCommand : ICommand
+{
+    readonly List<TransferCommand> _commands;
+
+    public TransferGroupCommand()
+    {
+        _commands = new List<TransferCommand>();
+    }
+
+    public void AddTransfer(TransferCommand command)
+    {
+        _commands.Add(command);
+    }
+
+    public void Execute()
+    {
+        foreach (var command in _commands)
+        {
+            command.Execute();
+        }
+    }
+
+    public void Undo()
+    {
+        for (var i = _commands.Count - 1; i >= 0; i--)
+        {
+            _commands[i].Undo();
+        }
+    }
+}
+
+
+public interface ICommand
+{
+    void Execute();
+    void Undo();
 }

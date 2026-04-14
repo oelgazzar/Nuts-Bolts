@@ -1542,7 +1542,7 @@ GameObject:
   - component: {fileID: 995849638}
   - component: {fileID: 995849637}
   m_Layer: 5
-  m_Name: Panel
+  m_Name: Level Completed Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1581,7 +1581,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.972549}
+  m_Color: {r: 0, g: 0, b: 0, a: 0.87058824}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1913,6 +1913,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83364a3078f21524d823cc32a5e0c05d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bolt
+--- !u!1 &1349068579
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1349068581}
+  - component: {fileID: 1349068580}
+  m_Layer: 0
+  m_Name: NutAnimationController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1349068580
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1349068579}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61e4c9dded7420644b894a233a4baeed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NutAnimationController
+  _transferAnimationDuration: 0.1
+  _nutSpinAnimationDuration: 0.15
+  _enterExitAnimationDuration: 0.3
+--- !u!4 &1349068581
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1349068579}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 611.36346, y: 277.26865, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1369068597
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2406,7 +2453,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   _levelCompletedSfx: {fileID: 8300000, guid: 3c95827eb5a477b449d4ec041aff2ae4, type: 3}
   _boltCompleteSfx: {fileID: 8300000, guid: a929518c64ebead4e91b89c1897a4ce0, type: 3}
-  _nutSpinSfx: {fileID: 0}
+  _nutSpinSfx: {fileID: 8300000, guid: 151066d9e40a8be46ad212f43f9e4a76, type: 3}
 --- !u!82 &1938310153
 AudioSource:
   m_ObjectHideFlags: 0
@@ -2716,3 +2763,4 @@ SceneRoots:
   - {fileID: 293104449}
   - {fileID: 1938310154}
   - {fileID: 1942880319}
+  - {fileID: 1349068581}

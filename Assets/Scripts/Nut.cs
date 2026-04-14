@@ -16,9 +16,9 @@ public class Nut : MonoBehaviour
         var main = _insertionEffect.main;
         main.startColor = Color;
     }
-    private void HandleNutInserted(Nut nut)
+    private void HandleNutInserted(Nut nut, int index, bool isMatch)
     {
-        if ( nut == this)
+        if ( nut == this && isMatch)
         {
             _insertionEffect.Play();
         }
